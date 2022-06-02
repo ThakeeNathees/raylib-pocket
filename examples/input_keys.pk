@@ -1,0 +1,46 @@
+
+## import raylib from "../bin/raylib.dll"
+import ^bin.raylib as rl
+
+
+# Initialization
+#--------------------------------------------------------------------------------------
+screenWidth = 800
+screenHeight = 450
+
+rl.InitWindow(screenWidth, screenHeight, "raylib [core] example - keyboard input");
+
+ballPosition = rl.Vector2( screenWidth/2, screenHeight/2)
+
+rl.SetTargetFPS(60);         # Set our game to run at 60 frames-per-second
+#--------------------------------------------------------------------------------------
+
+# Main game loop
+while (!rl.WindowShouldClose())  # Detect window close button or ESC key
+
+  # Update
+  #----------------------------------------------------------------------------------
+  if (rl.IsKeyDown(rl.KEY_RIGHT)) then ballPosition.x += 2.0 end
+  if (rl.IsKeyDown(rl.KEY_LEFT))  then ballPosition.x -= 2.0 end
+  if (rl.IsKeyDown(rl.KEY_UP))    then ballPosition.y -= 2.0 end
+  if (rl.IsKeyDown(rl.KEY_DOWN))  then ballPosition.y += 2.0 end
+  #----------------------------------------------------------------------------------
+
+  # Draw
+  #----------------------------------------------------------------------------------
+  rl.BeginDrawing();
+
+  rl.ClearBackground(rl.RAYWHITE);
+
+  rl.DrawText("move the ball with arrow keys", 10, 10, 20, rl.DARKGRAY);
+
+  rl.DrawCircleV(ballPosition, 50, rl.MAROON);
+
+  rl.EndDrawing();
+  #----------------------------------------------------------------------------------
+end
+
+# De-Initialization
+#--------------------------------------------------------------------------------------
+rl.CloseWindow();    # Close window and OpenGL context
+#--------------------------------------------------------------------------------------

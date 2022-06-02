@@ -5,6 +5,9 @@
 
 import _getters, _setters, _functions
 
+## FIXME: move this.
+MANUAL_BINDINGS_FN = 'register_manual_bindings'
+
 ## Write a section heading.
 def heading(ctx, header)
   ctx.fp.write('\n')
@@ -43,12 +46,14 @@ def ctor_and_dtor(ctx)
 end
 
 
-## Declare class handles.
+## Declare class handles. TODO: since the manual bindings are in a separate
+## translation unit, and it uses the class handles we cannot define them as
+## static here.
 def decl_handles(ctx)
   heading(ctx, 'POCKET CLASS HANDLES')
   ctx.fp.write('\n')
   for cls_name in ctx.RAYLIB_TYPES
-    ctx.fp.write('static PkHandle* ${ctx.CLS_PRE}$cls_name = NULL;\n')
+    ctx.fp.write('PkHandle* ${ctx.CLS_PRE}$cls_name = NULL;\n')
   end
 end
 
@@ -89,6 +94,11 @@ end
 ## Register raylib module.
 def register_raylib(ctx)
   heading(ctx, 'MODULE REGISTER')
+  ## Forward declare manual binding function.
+  ctx.fp.write('\n')
+  ctx.fp.write('void $MANUAL_BINDINGS_FN(PKVM* vm, PkHandle* raylib);\n')
+  
+  ctx.fp.write('\n')
   ctx.fp.write('PK_EXPORT PkHandle* pkExportModule(PKVM* vm) {\n')
   ctx.fp.write('  PkHandle* ${ctx.PKLIB_NAME} = pkNewModule(vm, "${ctx.PKLIB_NAME}");\n')
   
@@ -96,6 +106,10 @@ def register_raylib(ctx)
   _register_classes(ctx)
   _register_functions(ctx)
   
+  ctx.fp.write('\n')
+  ctx.fp.write('  $MANUAL_BINDINGS_FN(vm, ${ctx.PKLIB_NAME});\n')
+  
+  ctx.fp.write('\n')
   ctx.fp.write('  return ${ctx.PKLIB_NAME};\n')
   ctx.fp.write('}\n')
 end

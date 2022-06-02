@@ -53,7 +53,7 @@ if not exist bin/ (
 )
 
 cl /LD /MD /DEBUG:FULL /Febin/raylib.dll ^
-   src/bindings.c ^
+   src/bindings.c src/manual.c ^
    thirdparty/pocketlang-0.1.0/pknative.c ^
    /Ithirdparty/pocketlang-0.1.0/ ^
    /Ithirdparty/raylib-4.0.0/include/ ^

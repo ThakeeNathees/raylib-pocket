@@ -321,37 +321,37 @@ static void _VrStereoConfigDelete(PKVM* vm, void* ptr) {
 /* POCKET CLASS HANDLES                                                      */
 /*****************************************************************************/
 
-static PkHandle* cls_Vector2 = NULL;
-static PkHandle* cls_Vector3 = NULL;
-static PkHandle* cls_Vector4 = NULL;
-static PkHandle* cls_Matrix = NULL;
-static PkHandle* cls_Color = NULL;
-static PkHandle* cls_Rectangle = NULL;
-static PkHandle* cls_Image = NULL;
-static PkHandle* cls_Texture = NULL;
-static PkHandle* cls_RenderTexture = NULL;
-static PkHandle* cls_NPatchInfo = NULL;
-static PkHandle* cls_GlyphInfo = NULL;
-static PkHandle* cls_Font = NULL;
-static PkHandle* cls_Camera3D = NULL;
-static PkHandle* cls_Camera2D = NULL;
-static PkHandle* cls_Mesh = NULL;
-static PkHandle* cls_Shader = NULL;
-static PkHandle* cls_MaterialMap = NULL;
-static PkHandle* cls_Material = NULL;
-static PkHandle* cls_Transform = NULL;
-static PkHandle* cls_BoneInfo = NULL;
-static PkHandle* cls_Model = NULL;
-static PkHandle* cls_ModelAnimation = NULL;
-static PkHandle* cls_Ray = NULL;
-static PkHandle* cls_RayCollision = NULL;
-static PkHandle* cls_BoundingBox = NULL;
-static PkHandle* cls_Wave = NULL;
-static PkHandle* cls_AudioStream = NULL;
-static PkHandle* cls_Sound = NULL;
-static PkHandle* cls_Music = NULL;
-static PkHandle* cls_VrDeviceInfo = NULL;
-static PkHandle* cls_VrStereoConfig = NULL;
+PkHandle* cls_Vector2 = NULL;
+PkHandle* cls_Vector3 = NULL;
+PkHandle* cls_Vector4 = NULL;
+PkHandle* cls_Matrix = NULL;
+PkHandle* cls_Color = NULL;
+PkHandle* cls_Rectangle = NULL;
+PkHandle* cls_Image = NULL;
+PkHandle* cls_Texture = NULL;
+PkHandle* cls_RenderTexture = NULL;
+PkHandle* cls_NPatchInfo = NULL;
+PkHandle* cls_GlyphInfo = NULL;
+PkHandle* cls_Font = NULL;
+PkHandle* cls_Camera3D = NULL;
+PkHandle* cls_Camera2D = NULL;
+PkHandle* cls_Mesh = NULL;
+PkHandle* cls_Shader = NULL;
+PkHandle* cls_MaterialMap = NULL;
+PkHandle* cls_Material = NULL;
+PkHandle* cls_Transform = NULL;
+PkHandle* cls_BoneInfo = NULL;
+PkHandle* cls_Model = NULL;
+PkHandle* cls_ModelAnimation = NULL;
+PkHandle* cls_Ray = NULL;
+PkHandle* cls_RayCollision = NULL;
+PkHandle* cls_BoundingBox = NULL;
+PkHandle* cls_Wave = NULL;
+PkHandle* cls_AudioStream = NULL;
+PkHandle* cls_Sound = NULL;
+PkHandle* cls_Music = NULL;
+PkHandle* cls_VrDeviceInfo = NULL;
+PkHandle* cls_VrStereoConfig = NULL;
 
 /*****************************************************************************/
 /* GETTERS AND SETTERS                                                       */
@@ -8484,6 +8484,9 @@ SetAudioStreamBufferSizeDefault(size);
 /*****************************************************************************/
 /* MODULE REGISTER                                                           */
 /*****************************************************************************/
+
+void register_manual_bindings(PKVM* vm, PkHandle* raylib);
+
 PK_EXPORT PkHandle* pkExportModule(PKVM* vm) {
   PkHandle* raylib = pkNewModule(vm, "raylib");
 
@@ -9668,6 +9671,9 @@ PK_EXPORT PkHandle* pkExportModule(PKVM* vm) {
   pkModuleAddFunction(vm, raylib, "SetAudioStreamVolume",   _SetAudioStreamVolume, 2);
   pkModuleAddFunction(vm, raylib, "SetAudioStreamPitch",   _SetAudioStreamPitch, 2);
   pkModuleAddFunction(vm, raylib, "SetAudioStreamBufferSizeDefault",   _SetAudioStreamBufferSizeDefault, 1);
+
+  register_manual_bindings(vm, raylib);
+
   return raylib;
 }
 

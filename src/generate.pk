@@ -21,7 +21,6 @@ RAYLIB_API_PATH = normpath(join(ROOT_PATH,
                        'parser/raylib_api.json'))
 RAYLIB_API = json.parse(io.readfile(RAYLIB_API_PATH))
 
-
 ## Contains the parsing context.
 class Context end
 ctx = Context()
@@ -30,7 +29,6 @@ ctx = Context()
 ctx.RAYLIB_API = RAYLIB_API
 ctx.PKLIB_NAME = 'raylib' ## Pocket module name.
 ctx.CLS_PRE = 'cls_' ## Prefix of pocket class handles.
-
 
 ctx.ALIASES = fn
   _ = {}
@@ -128,6 +126,18 @@ def _check_supported_bindings()
     if not_supported then continue end
     
     ctx.REGISTERED_FUNCTIONS.append(func)
+  end
+end
+
+
+## This function was used to generate color values for manual bindgs.
+def print_color_defines(ctx)
+  for define in ctx.RAYLIB_API['defines']
+    if define['type'] == 'COLOR'
+      name = define['name']
+      values = define['value'][17..-8]
+      print('DEFINE_COLOR("$name", $values);')
+    end
   end
 end
 
