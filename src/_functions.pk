@@ -1,0 +1,136 @@
+#
+# Copyright (c) 2022 Thakee Nathees
+# Distributed Under The MIT License
+#
+
+import types
+import raytypes as rt
+
+def function(ctx, func)
+  param_types = []
+  params = func.get('params', [])
+  
+  for param in params
+    param_types.append(rt.parse(ctx, param['type']))
+  end
+  
+  ctx.fp.write('// ${func["description"]}\n')
+  ctx.fp.write('static void _${func["name"]}(PKVM* vm) {\n')
+
+  ctx.fp.write('\n')
+  _validate_parameters(ctx, params, param_types)
+  
+  ctx.fp.write('\n')
+  _call_raylib_fn(ctx, func, params, param_types)
+    
+  ctx.fp.write('}\n')
+  ctx.fp.write('\n')
+end
+
+
+## Get parameter from PKVM stack.
+def _validate_parameters(ctx, params, param_types)
+  
+  for i in 0..params.length
+    param = params[i]
+    ty = param_types[i]
+    name = param['name']
+    
+    {
+      rt.PK_ERR: fn assert(false) end,
+      rt.PK_NULL: fn assert(false) end,
+      rt.PK_BOOL: fn
+        ctx.fp.write('  bool $name;\n')
+        ctx.fp.write('  if (!pkValidateSlotBool(vm, ${i+1}, &$name)) return;\n')
+      end,
+      rt.PK_NUMBER: fn
+        ctx.fp.write('  double $name;\n')
+        ctx.fp.write('  if (!pkValidateSlotNumber(vm, ${i+1}, &$name)) return;\n')
+      end,
+      rt.PK_STRING: fn
+        ctx.fp.write('  const char* $name;\n')
+        ctx.fp.write('  if (!pkValidateSlotString(vm, ${i+1}, &$name, NULL)) return;\n')
+      end,
+      rt.PK_OBJECT: fn
+        cls_name = ty.name
+        ctx.fp.write('  pkSetSlotHandle(vm, 0, ${ctx.CLS_PRE}$cls_name);\n')
+        ctx.fp.write('  if (!pkValidateSlotInstanceOf(vm, ${i+1}, 0)) return;\n')
+        ctx.fp.write('  $cls_name* $name = pkGetSlotNativeInstance(vm, ${i+1});\n')
+      end,
+    } [ty.type] ()
+  end
+end
+
+
+## Call raylib function internally and return set slot 0 the return value.
+def _call_raylib_fn(ctx, func, params, param_types)
+  ret_name = 'ret'
+  retty = rt.parse(ctx, func["returnType"])
+  cls_name = retty.name ## Class name of the return type.
+  
+  { ## Write "<return-type> ret = (<cast>)" to capture the return value.
+    rt.PK_ERR: fn assert(false) end,
+    rt.PK_NULL: fn end,
+    rt.PK_BOOL: fn
+      ctx.fp.write('  bool $ret_name = ')
+    end,
+    rt.PK_NUMBER: fn
+      ctx.fp.write('  double $ret_name = (double) ')
+    end,
+    rt.PK_STRING: fn
+      ctx.fp.write('  const char* $ret_name = ')
+    end,
+    rt.PK_OBJECT: fn
+      ctx.fp.write('  $cls_name')
+      if retty.pointerc == 1
+        ctx.fp.write('*') ## Get as pointer.
+      else
+        assert(retty.pointerc == 0)
+      end
+      ctx.fp.write(' $ret_name = ')
+    end,
+  } [retty.type] ()
+  
+  ## Call the function.
+  ctx.fp.write('${func["name"]}(')
+  for i in 0..params.length
+    if i != 0 then ctx.fp.write(', ') end
+    ty = param_types[i]
+    if ty.type == rt.PK_OBJECT
+      if ty.pointerc == 0
+        ctx.fp.write('*') ## Dereference the value.
+      elif ty.pointerc == 2
+        ctx.fp.write('&') ## Parameter is pointer pointer.
+      else
+        assert(ty.pointerc == 1)
+      end
+    end
+    ctx.fp.write('${params[i]["name"]}')
+  end
+  
+  ctx.fp.write(');\n')
+  ctx.fp.write('\n')
+  
+  ## Set the return value.
+  {
+    rt.PK_ERR: fn assert(false) end,
+    rt.PK_NULL: fn end,
+    rt.PK_BOOL: fn
+      ctx.fp.write('  pkSetSlotBool(vm, 0, $ret_name);\n')
+    end,
+    rt.PK_NUMBER: fn
+      ctx.fp.write('  pkSetSlotNumber(vm, 0, $ret_name);\n')
+    end,
+    rt.PK_STRING: fn
+      ctx.fp.write('  pkSetSlotString(vm, 0, $ret_name);\n')
+    end,
+    rt.PK_OBJECT: fn
+      ctx.fp.write('  pkSetSlotHandle(vm, 0, ${ctx.CLS_PRE}$cls_name);\n')
+      ctx.fp.write('  if (!pkNewInstance(vm, 0, 0, 0, 0)) return;\n')
+      ctx.fp.write('  $cls_name* r = pkGetSlotNativeInstance(vm, 0);\n')
+      
+      assert(retty.pointerc == 0)
+      ctx.fp.write('  *r = $ret_name;\n')
+    end,
+  } [retty.type] ()
+end

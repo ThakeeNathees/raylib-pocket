@@ -1,0 +1,140 @@
+#
+# Copyright (c) 2022 Thakee Nathees
+# Distributed Under The MIT License
+#
+
+import _getters, _setters, _functions
+
+## Write a section heading.
+def heading(ctx, header)
+  ctx.fp.write('\n')
+  ctx.fp.write('/${"*"*77}/\n')
+  ctx.fp.write('/* $header ${" " * (79 - header.length - 6)}*/\n')
+  ctx.fp.write('/${"*"*77}/\n')
+end
+
+
+def include_headers(ctx)
+  ctx.fp.write('\n')
+  ctx.fp.write('#include <pocketlang.h>\n')
+  ctx.fp.write('#include <raylib.h>\n')
+  ctx.fp.write('#include <string.h>\n')
+end
+
+
+## Define class constructors and distructors.
+def ctor_and_dtor(ctx)
+  heading(ctx, 'CONSTRUCTORS AND DISTRUCTORS')
+  for cls_name in ctx.RAYLIB_TYPES
+    ## New method.
+    ctx.fp.write('\n')
+    ctx.fp.write('static void* _${cls_name}New(PKVM* vm) {\n')
+    ctx.fp.write('  $cls_name* ptr = pkRealloc(vm, NULL, sizeof($cls_name));\n')
+    ctx.fp.write('  memset(ptr, 0, sizeof($cls_name));\n')
+    ctx.fp.write('  return ptr;\n')
+    ctx.fp.write('}\n')
+    
+    ## Delete method.
+    ctx.fp.write('\n')
+    ctx.fp.write('static void _${cls_name}Delete(PKVM* vm, void* ptr) {\n')
+    ctx.fp.write('  pkRealloc(vm, ptr, 0);\n')
+    ctx.fp.write('}\n')
+  end
+end
+
+
+## Declare class handles.
+def decl_handles(ctx)
+  heading(ctx, 'POCKET CLASS HANDLES')
+  ctx.fp.write('\n')
+  for cls_name in ctx.RAYLIB_TYPES
+    ctx.fp.write('static PkHandle* ${ctx.CLS_PRE}$cls_name = NULL;\n')
+  end
+end
+
+
+## Define getters and setters.
+def getter_setter(ctx)
+  heading(ctx, 'GETTERS AND SETTERS')
+  
+  for cls in ctx.RAYLIB_API['structs']
+    ctx.fp.write('\n')
+    _getters.getter(ctx, cls)
+    ctx.fp.write('\n')
+    _setters.setter(ctx, cls)
+  end
+end
+
+
+## Write function bindings.
+def register_fns(ctx)
+  for func in ctx.REGISTERED_FUNCTIONS
+    _functions.function(ctx, func)
+  end
+end
+
+
+## Cleanup raylib module.
+def cleanup_raylib(ctx)
+  heading(ctx, 'MODULE CLEANUP')
+  ctx.fp.write('\n')
+  ctx.fp.write('PK_EXPORT void pkCleanupModule(PKVM* vm) {\n')
+  for cls_name in ctx.RAYLIB_TYPES
+    ctx.fp.write('  pkReleaseHandle(vm, ${ctx.CLS_PRE}$cls_name);\n')
+  end
+  ctx.fp.write('}\n')
+end
+
+
+## Register raylib module.
+def register_raylib(ctx)
+  heading(ctx, 'MODULE REGISTER')
+  ctx.fp.write('PK_EXPORT PkHandle* pkExportModule(PKVM* vm) {\n')
+  ctx.fp.write('  PkHandle* ${ctx.PKLIB_NAME} = pkNewModule(vm, "${ctx.PKLIB_NAME}");\n')
+  
+  _register_enums(ctx)  
+  _register_classes(ctx)
+  _register_functions(ctx)
+  
+  ctx.fp.write('  return ${ctx.PKLIB_NAME};\n')
+  ctx.fp.write('}\n')
+end
+
+
+def _register_enums(ctx)
+  ctx.fp.write('\n')
+  ctx.fp.write('  pkReserveSlots(vm, 2);\n')
+  ctx.fp.write('  pkSetSlotHandle(vm, 0, ${ctx.PKLIB_NAME});\n')
+  
+  for en in ctx.RAYLIB_API['enums']
+    ctx.fp.write('\n')
+    ctx.fp.write('  // ${en["name"]}\n')
+    for v in en['values']
+      name = v['name']; value = v['value']
+      ctx.fp.write('  pkSetSlotNumber(vm, 1, $value);\n')
+      ctx.fp.write('  pkSetAttribute(vm, 0, "$name", 1);\n')
+    end
+  end
+end
+
+
+def _register_classes(ctx)
+  for cls in ctx.RAYLIB_API['structs']
+    cls_name = cls['name']
+    ctx.fp.write('\n')
+    ctx.fp.write('  ${ctx.CLS_PRE}$cls_name = pkNewClass(vm, "$cls_name", ' +
+                 'NULL, ${ctx.PKLIB_NAME}, _${cls_name}New, _${cls_name}Delete);\n')
+    ctx.fp.write('  pkClassAddMethod(vm, ${ctx.CLS_PRE}$cls_name, "@getter",  _${cls_name}Getter, 1);\n')
+    ctx.fp.write('  pkClassAddMethod(vm, ${ctx.CLS_PRE}$cls_name, "@setter",  _${cls_name}Setter, 2);\n')
+  end
+end
+
+
+def _register_functions(ctx)
+  ctx.fp.write('\n')
+  for func in ctx.REGISTERED_FUNCTIONS
+    fn_name = func['name']
+    argc = func.get('params', []).length
+    ctx.fp.write('  pkModuleAddFunction(vm, ${ctx.PKLIB_NAME}, "$fn_name",   _$fn_name, $argc);\n')
+  end
+end

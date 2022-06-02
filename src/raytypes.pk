@@ -1,0 +1,149 @@
+#
+# Copyright (c) 2022 Thakee Nathees
+# Distributed Under The MIT License
+#
+
+class Ctype
+  def _init()
+  
+    ## Equlavent pocketlang type. PK_ERR meaning some parser error.
+    self.type = PK_ERR
+  
+    ## String will be the error message if it has any.
+    self.error = ''
+    
+    ## String value of the name for Objects, this contains the plain
+    ## type without the pointer, array information stripped.
+    self.name = ''
+    
+    ## If the type type is a pointer of [self.type], pointerc will equal to the
+    ## number of pointers ie. Texture** => pointerc == 2.
+    ##
+    ## Note that strings are primitive in pocketlang so pointerc will be zero.
+    self.pointerc = 0
+    
+    ## If the type is an array of [self.type], arrayc will equal to the
+    ## number of elements in the array ie. float[4] => arrayc == 4.
+    self.arrayc = 0
+    
+    ## Weather the type is a constant or not. ie. const int => const == true.
+    self.const = false
+  end
+  
+  ## Return true if the type is pocket primitive or string.
+  def is_primitive()
+    if self.type == PK_ERR    then return false end
+    if self.type == PK_NULL   then return true  end
+    if self.type == PK_BOOL   then return true  end
+    if self.type == PK_NUMBER then return true  end
+    if self.type == PK_STRING then return true  end
+    if self.type == PK_OBJECT then return false end
+  end
+  
+  ## Return true if it's supported for binding.
+  def is_supported(ctx)
+    
+    if self.type == PK_ERR then return false end
+    if self.type == PK_STRING then return true end
+    
+    ## 'int' is supported but 'int*' isn't
+    if self.is_primitive()
+      return self.pointerc == 0
+    end
+    
+    ## If we've reached here it's an object type.
+    assert(self.type == PK_OBJECT)
+    for ut in ctx.UNSUPPORTED_TYPES
+      if self.name == ut then return false end
+    end
+    
+    ## Array of primitive (ie int[4]) is supported but not objects.
+    if self.arrayc > 0
+      return self.is_primitive() and self.arrayc <= 4
+    end
+    
+    if self.name in ctx.CALLBACKS
+      return false
+    end
+    
+    return self.pointerc <= 1
+  end
+  
+end
+
+
+## Parse a raylib C type and return it as Ctype instance.
+def parse(ctx, src)
+  ctype = Ctype()
+  
+  if '...' in src
+    ctype.name = src
+    ctype.error = 'Unsupported type $src'
+    return ctype
+  end
+  
+  ## If it's string, we're done.
+  if (src == 'const char *') or (src == 'char[32]')
+    ctype.type = PK_STRING
+    ctype.const = true
+    return ctype
+  end
+  
+  if ctype.const = src.startswith('const')
+    src = src[5..-1].strip() ## Eat the const.
+  end
+  
+  star = src.find('*')
+  if star != -1
+    ctype.pointerc += 1
+    for i in star+1..src.length
+      if src[i] == '*' then ctype.pointerc += 1 end
+    end
+    src = src[0..star-1].strip()
+  end
+  
+  arr = src.find('[')
+  if arr != -1
+    arend = src.find(']'); assert(arend != -1)
+    ctype.arrayc = Number(src[arr+1 .. arend-1])
+    src = src[0..arr-1].strip()
+  end
+  
+  if src == 'void'
+    ctype.type = PK_NULL
+    return ctype
+  
+  elif src == 'bool'
+    ctype.type = PK_NUMBER
+    return ctype
+    
+  elif src in ['char', 'float', 'double', 'int', 'long',
+                'unsigned char', 'unsigned short', 'unsigned int']
+    ctype.type = PK_NUMBER
+    return ctype
+    
+  else
+    ctype.type = PK_OBJECT
+    ctype.name = ctx.ALIASES.get(src, src)
+    return ctype
+  end
+  
+  assert(false, "Unreachable (src = $src).")
+  
+end
+
+# ============================================================================
+# Internals.
+# ============================================================================
+
+## Something like GO lang's iota.
+_iota = -1
+
+PK_ERR    = (_iota += 1)
+PK_NULL   = (_iota += 1)
+PK_BOOL   = (_iota += 1)
+PK_NUMBER = (_iota += 1)
+PK_STRING = (_iota += 1)
+PK_OBJECT = (_iota += 1)
+
+

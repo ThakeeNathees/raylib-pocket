@@ -1,0 +1,148 @@
+#
+# Copyright (c) 2022 Thakee Nathees
+# Distributed Under The MIT License
+#
+
+RAYLIB_VERSION = '4.0.0'          ## Target raylib version.
+BINDING_TARGET = 'src/bindings.c' ## Target file relative to the repo root.
+
+# ============================================================================
+# End of user configuration. No need to edit anything bellow this.
+# ============================================================================
+
+import io, json, types
+from path import join, dirname, normpath
+import raytypes as rt, writer
+
+## Path of this script's directory.
+ROOT_PATH = normpath(join(dirname(__file__), ".."))
+RAYLIB_API_PATH = normpath(join(ROOT_PATH,
+                       'thirdparty/raylib-$RAYLIB_VERSION/',
+                       'parser/raylib_api.json'))
+RAYLIB_API = json.parse(io.readfile(RAYLIB_API_PATH))
+
+
+## Contains the parsing context.
+class Context end
+ctx = Context()
+
+
+ctx.RAYLIB_API = RAYLIB_API
+ctx.PKLIB_NAME = 'raylib' ## Pocket module name.
+ctx.CLS_PRE = 'cls_' ## Prefix of pocket class handles.
+
+
+ctx.ALIASES = fn
+  _ = {}
+  for aliase in RAYLIB_API['aliases']
+    _[aliase['name']] = aliase['type']
+  end
+  return _
+end ()
+
+
+ctx.CALLBACKS = fn
+  _ = []
+  for callback in RAYLIB_API['callbacks']
+    _.append(callback['name'])
+  end
+  return _
+end ()
+
+
+ctx.RAYLIB_TYPES = fn
+  _ = []
+  for struct in RAYLIB_API['structs']
+    _.append(struct['name'])
+  end
+  return _
+end ()
+
+
+## Functions that need manual bindings.
+ctx.NEED_MANUAL_BINDINGS = [
+  'LoadImageColors',
+  'LoadFileText',
+  'UnloadFileText',
+  'LoadFileData',
+  'UnloadFileData',
+]
+
+
+## Types (without pointer, array information) that are not supported.
+ctx.UNSUPPORTED_TYPES = ['rAudioBuffer']
+
+
+## Array of registered functions. Some are skipped because the code
+## cannot generated automatically (need menual bindgs) or other reasons.
+ctx.REGISTERED_FUNCTIONS = []
+
+
+## The current file to write to.
+ctx.fp = null
+
+def main()
+  
+  ## Open target file.
+  target_path = join(ROOT_PATH, BINDING_TARGET)
+  ctx.fp = open(target_path, 'w')
+  
+  _check_supported_bindings()
+  _generate(ctx)
+  
+  ## Close target file.
+  ctx.fp.close()
+end
+
+
+## Prints a message for skipping the function.
+def report_skipped_fn(func)
+  print("Function Skipped:", func['name'])
+end
+
+
+## Check if a function can be supported for automatic bindings
+## and add it to the REGISTERED_FUNCTIONS list.
+def _check_supported_bindings()
+  for func in RAYLIB_API['functions']
+  
+    if func['name'] in ctx.NEED_MANUAL_BINDINGS
+      report_skipped_fn(func)
+      continue
+    end
+    
+    ctype = rt.parse(ctx, func['returnType'])
+    if !ctype.is_supported(ctx)
+      report_skipped_fn(func)
+      continue
+    end
+    
+    not_supported = false
+    for param in func.get('params', [])
+      ctype = rt.parse(ctx, param['type'])
+      if !ctype.is_supported(ctx)
+        report_skipped_fn(func)
+        not_supported = true; break;
+      end
+    end
+    if not_supported then continue end
+    
+    ctx.REGISTERED_FUNCTIONS.append(func)
+  end
+end
+
+
+def _generate(ctx)
+  writer.include_headers(ctx)
+  writer.ctor_and_dtor(ctx)
+  writer.decl_handles(ctx)
+  writer.getter_setter(ctx)
+  writer.register_fns(ctx)
+  writer.register_raylib(ctx)
+  writer.cleanup_raylib(ctx)
+end
+
+
+if __name__ == "__main__"
+  main()
+end

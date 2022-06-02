@@ -1,0 +1,101 @@
+#
+# Copyright (c) 2022 Thakee Nathees
+# Distributed Under The MIT License
+#
+
+import types
+import raytypes as rt
+
+## Write getter for the [cls]
+def setter(ctx, cls)
+  cls_name = cls['name']
+  ctx.fp.write('void _${cls_name}Setter(PKVM* vm) {\n')
+  ctx.fp.write('  uint32_t hash = pkGetSlotHash(vm, 1);\n')
+  ctx.fp.write('  $cls_name* self = pkGetSelf(vm);\n')
+  ctx.fp.write('\n')
+  ctx.fp.write('  switch (hash) {\n')
+  for field in cls['fields']
+    _setter_field(ctx, field)
+  end
+  ctx.fp.write('  }\n') ## Switch
+  ctx.fp.write('}\n')    
+end
+
+
+## Write setter for a field.
+def _setter_field(ctx, field)
+  name = field['name']
+  type = field['type']
+  hash = types.hash(name)
+  ty = rt.parse(ctx, type)
+  
+  if ty.is_supported(ctx)
+  
+    ## Cannot write getter for ponter types.
+    if  ty.pointerc > 0 then return end
+    
+    ctx.fp.write('    case $hash: { // $type $name\n')
+    
+    if ty.arrayc != 0
+      _seter_field_array(ctx, ty, name)
+    else
+      _seter_field_simple(ctx, ty, name)
+    end
+    
+    ctx.fp.write('      return;\n')
+    ctx.fp.write('    }\n')
+  end
+end
+
+
+## Write setter for array type. (ie. float[4]).
+def _seter_field_array(ctx, ty, name)
+  assert(ty.is_primitive())
+  assert(ty.type == rt.PK_NUMBER)
+  assert(2 <= ty.arrayc <= 4)
+  
+  indentation = '     '
+  n = ty.arrayc
+  
+  ctx.fp.write('$indentation pkSetSlotHandle(vm, 0, ${ctx.CLS_PRE}Vector$n);\n')
+  ctx.fp.write('$indentation if (!pkNewInstance(vm, 0, 0, 0, 0)) return;\n')
+  ctx.fp.write('$indentation Vector$n* vector$n = pkGetSlotNativeInstance(vm, 0);\n')
+  for i in 0..n
+    nname = 'xyzw'[i]
+    ctx.fp.write('$indentation self->$name[$i] = vector$n->$nname;\n')
+  end
+end
+
+
+## Write setter for simple type.
+def _seter_field_simple(ctx, ty, name)
+  indentation = '     '
+  {
+    rt.PK_ERR: fn assert(false) end,
+    rt.PK_NULL: fn assert(false) end,
+    rt.PK_BOOL: fn
+      ctx.fp.write('$indentation bool value;\n')
+      ctx.fp.write('$indentation if (!pkValidateSlotBool(vm, 2, &value)) return;\n')
+      ctx.fp.write('$indentation self->$name = value;\n')
+    end,
+    rt.PK_NUMBER: fn
+      ctx.fp.write('$indentation double value;\n')
+      ctx.fp.write('$indentation if (!pkValidateSlotNumber(vm, 2, &value)) return;\n')
+      ctx.fp.write('$indentation self->$name = value;\n')
+    end,
+    
+    rt.PK_STRING: fn
+      ## TODO:
+      ctx.fp.write('$indentation // String setter not suppoted.\n')
+    end,
+
+    rt.PK_OBJECT: fn
+      cls_name = ty.name
+      ctx.fp.write('$indentation pkSetSlotHandle(vm, 0, ${ctx.CLS_PRE}$cls_name);\n')
+      ctx.fp.write('$indentation if (!pkValidateSlotInstanceOf(vm, 2, 0)) return;\n')
+      ctx.fp.write('$indentation $cls_name* value = pkGetSlotNativeInstance(vm, 2);\n')
+      ctx.fp.write('$indentation self->$name = *value;\n')
+    end,
+  } [ty.type] ()
+end
+
