@@ -89,11 +89,11 @@ static void _rectangleInit(PKVM* vm) {
 }
 
 void register_manual_bindings(PKVM* vm, PkHandle* raylib) {
-  pkClassAddMethod(vm, cls_Color, "_init", _colorInit,     -1);
-  pkClassAddMethod(vm, cls_Vector2, "_init", _vector2Init, -1);
-  pkClassAddMethod(vm, cls_Vector3, "_init", _vector3Init, -1);
-  pkClassAddMethod(vm, cls_Vector4, "_init", _vector4Init, -1);
-  pkClassAddMethod(vm, cls_Rectangle, "_init", _rectangleInit, -1);
+  pkClassAddMethod(vm, cls_Color, "_init", _colorInit,     -1, NULL);
+  pkClassAddMethod(vm, cls_Vector2, "_init", _vector2Init, -1, NULL);
+  pkClassAddMethod(vm, cls_Vector3, "_init", _vector3Init, -1, NULL);
+  pkClassAddMethod(vm, cls_Vector4, "_init", _vector4Init, -1, NULL);
+  pkClassAddMethod(vm, cls_Rectangle, "_init", _rectangleInit, -1, NULL);
   
   pkReserveSlots(vm, 6);
   pkSetSlotHandle(vm, 0, raylib);    // slot[0] = raylib

@@ -135,11 +135,13 @@ end
 def _register_classes(ctx)
   for cls in ctx.RAYLIB_API['structs']
     cls_name = cls['name']
+    cls_docs = cls['description']
     ctx.fp.write('\n')
     ctx.fp.write('  ${ctx.CLS_PRE}$cls_name = pkNewClass(vm, "$cls_name", ' +
-                 'NULL, ${ctx.PKLIB_NAME}, _${cls_name}New, _${cls_name}Delete);\n')
-    ctx.fp.write('  pkClassAddMethod(vm, ${ctx.CLS_PRE}$cls_name, "@getter",  _${cls_name}Getter, 1);\n')
-    ctx.fp.write('  pkClassAddMethod(vm, ${ctx.CLS_PRE}$cls_name, "@setter",  _${cls_name}Setter, 2);\n')
+                 'NULL, ${ctx.PKLIB_NAME}, _${cls_name}New, _${cls_name}Delete, ' +
+                 '"${cls_docs}");\n')
+    ctx.fp.write('  pkClassAddMethod(vm, ${ctx.CLS_PRE}$cls_name, "@getter",  _${cls_name}Getter, 1, NULL);\n')
+    ctx.fp.write('  pkClassAddMethod(vm, ${ctx.CLS_PRE}$cls_name, "@setter",  _${cls_name}Setter, 2, NULL);\n')
   end
 end
 
@@ -148,7 +150,8 @@ def _register_functions(ctx)
   ctx.fp.write('\n')
   for func in ctx.REGISTERED_FUNCTIONS
     fn_name = func['name']
+    fn_docs = func['description']
     argc = func.get('params', []).length
-    ctx.fp.write('  pkModuleAddFunction(vm, ${ctx.PKLIB_NAME}, "$fn_name",   _$fn_name, $argc);\n')
+    ctx.fp.write('  pkModuleAddFunction(vm, ${ctx.PKLIB_NAME}, "$fn_name",   _$fn_name, $argc, "$fn_docs");\n')
   end
 end
