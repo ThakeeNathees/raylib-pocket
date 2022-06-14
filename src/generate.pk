@@ -153,6 +153,6 @@ def _generate(ctx)
 end
 
 
-if __name__ == "__main__"
+if _name == "@main"
   main()
 end
